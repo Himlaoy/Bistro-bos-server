@@ -14,6 +14,7 @@ app.use(express.json())
 // jwt token verifier
 
 const jwtVerify = (req, res, next)=>{
+  
   const authorized = req.headers.authorization
   if(!authorized){
      return res.status(401).send({error:true, message:'unAuthorized access'})
@@ -58,19 +59,24 @@ async function run() {
     const reviewCollection = client.db('BistroDB').collection('reviews')
     const cartCollection = client.db('BistroDB').collection('carts')
 
+    // jwt api
+
     app.post('/jwt', (req, res)=>{
+
       const user = req.body
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET,{
         expiresIn:'10h'
       })
 
       res.send({token})
+
     })
 
 
     // warning: use jwtVerify before using verifyAdmin
 
     const verifyAdmin = async (req, res, next)=>{
+
       const email = req.decoded.email
       const query = {email:email}
       const user = await usersCollection.findOne(query)
@@ -86,6 +92,7 @@ async function run() {
     // check admin
     // user admin
     app.get('/users/admin/:email', jwtVerify, async(req, res)=>{
+
       const email = req.params.email
       const query = {email:email}
       if(req.decoded.email !== email){
@@ -94,6 +101,7 @@ async function run() {
       const user = await usersCollection.findOne(query)
       const result = {admin : user?.role === 'admin'}
       res.send(result)
+
     })
 
 
@@ -139,6 +147,12 @@ async function run() {
     app.get('/menu', async(req, res)=>{
         const result = await menuCollection.find().toArray()
         res.send(result)
+    })
+
+    app.post('/menu', jwtVerify, verifyAdmin, async(req, res)=>{
+      const body= req.body
+      const result = await menuCollection.insertOne(body)
+      res.send(result)
     })
 
     // reviews collection
