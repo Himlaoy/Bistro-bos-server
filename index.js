@@ -9,14 +9,41 @@ require('dotenv').config()
 const stripe = require('stripe')(process.env.PAYMENT_GETWAY_SECRET)
 
 const nodemailer = require("nodemailer");
+const mg = require('nodemailer-mailgun-transport');
+
 
 
 app.use(cors())
 app.use(express.json())
 
+const auth = {
+  auth: {
+    api_key: 'key-1234123412341234',
+    domain: 'one of your domain names listed at your https://app.mailgun.com/app/sending/domains'
+  }
+}
 
-const sendConfirmationEmail = email=>{
-  
+const nodemailerMailgun = nodemailer.createTransport(mg(auth));
+
+const sendConfirmationEmail = payment => {
+  transporter.sendMail({
+    from: "komola@gmail.com", // verified sender email
+    to: payment.email, // recipient email
+    subject: "Your product paid successfully. Enjoy your food soon", // Subject line
+    text: "Hello world!", // plain text body
+    html: `
+    <div>
+    <h2>Payment Confirmed !!</h2>
+    </div>
+    `, // html body
+  }, function (error, info) {
+    if (error) {
+      console.log(error);
+    } else {
+      console.log('Email sent: ' + info.response);
+    }
+  });
+
 }
 
 // jwt token verifier
@@ -196,7 +223,7 @@ async function run() {
 
     })
 
-    app.post('/carts', async(req, res) => {
+    app.post('/carts', async (req, res) => {
       const item = req.body
       const result = await cartCollection.insertOne(item)
       res.send(result)
@@ -224,11 +251,15 @@ async function run() {
     })
 
     app.post('/payments', jwtVerify, async (req, res) => {
-      const data = req.body
+      const payment = req.body
       // console.log(req.body)
-      const insertResult = await paymentCollection.insertOne(data)
+      const insertResult = await paymentCollection.insertOne(payment)
       const query = { _id: { $in: data.cartItems.map(id => new ObjectId(id)) } }
       const deleteResult = await cartCollection.deleteMany(query)
+
+      // send email
+      sendConfirmationEmail(payment)
+
 
       res.send({ insertResult, deleteResult })
 
@@ -265,7 +296,7 @@ async function run() {
     })
 
     app.get('/order-stats', jwtVerify, verifyAdmin, async (req, res) => {
-      const pipeline =  [
+      const pipeline = [
         {
           $lookup: {
             from: 'menu', // The collection to join with
