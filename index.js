@@ -8,9 +8,16 @@ const port = process.env.PORT || 5000
 require('dotenv').config()
 const stripe = require('stripe')(process.env.PAYMENT_GETWAY_SECRET)
 
+const nodemailer = require("nodemailer");
+
 
 app.use(cors())
 app.use(express.json())
+
+
+const sendConfirmationEmail = email=>{
+  
+}
 
 // jwt token verifier
 
@@ -67,7 +74,7 @@ async function run() {
 
       const user = req.body
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
-        expiresIn: '10h'
+        expiresIn: '1d'
       })
 
       res.send({ token })
@@ -189,7 +196,7 @@ async function run() {
 
     })
 
-    app.post('/carts', async (req, res) => {
+    app.post('/carts', async(req, res) => {
       const item = req.body
       const result = await cartCollection.insertOne(item)
       res.send(result)
